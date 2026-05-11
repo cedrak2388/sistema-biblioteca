@@ -3,7 +3,7 @@ const { MongoClient } = require('mongodb');
 
 const app = express();
 
-const uri = 'STRING_MONGODB';
+const uri = 'mongodb+srv://admin:admin123@cluster0.cklap49.mongodb.net/?appName=Cluster0';
 
 const client = new MongoClient(uri);
 
