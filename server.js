@@ -1,3 +1,26 @@
+// ========================================
+// CONSTANTES
+// ========================================
+const COLECOES = {
+
+    LIVROS: 'livros',
+
+    USUARIOS: 'usuarios',
+
+    EMPRESTIMOS: 'emprestimos'
+
+};
+const STATUS = {
+
+    DISPONIVEL: 'disponivel',
+
+    EMPRESTADO: 'emprestado',
+
+    ATIVO: 'ativo',
+
+    DEVOLVIDO: 'devolvido'
+
+};
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 
@@ -16,7 +39,7 @@ async function conectarMongo() {
         await client.connect();
         console.log('Conectado ao MongoDB');
         db = client.db('biblioteca');
-        const livros = db.collection('livros');
+        const livros = db.collection(COLECOES.LIVROS);
         
     }   catch (erro) {
         console.log('Erro ao conectar:', erro);
@@ -25,6 +48,9 @@ async function conectarMongo() {
 
 conectarMongo();
 
+// ========================================
+// FUNÇÕES AUXILIARES
+// ========================================
 function menu() {
 
     return `
@@ -33,7 +59,7 @@ function menu() {
 
         <a href="/dashboard">Dashboard</a>
 
-        <a href="/cadastrar-livro.html">
+        <a href="/cadastrar-livro">
             Cadastrar Livro
         </a>
 
@@ -97,34 +123,94 @@ function pagina(titulo, conteudo) {
 
 }
 
+function mensagem(titulo, texto) {
+
+    return pagina(
+
+        titulo,
+
+        `
+
+        <h2>${titulo}</h2>
+
+        <p>${texto}</p>
+
+        <br>
+
+        <a href="/dashboard">
+
+            Voltar ao Dashboard
+
+        </a>
+
+        `
+
+    );
+
+}
+
 app.use(express.static('public'));
 
-app.post('/cadastrar-livro', async (req, res) => {
+// ========================================
+// ROTAS DE AUTENTICAÇÃO
+// ========================================
+app.post('/login', async (req, res) => {
 
     try {
 
-        const { titulo, autor } = req.body;
+        const { usuario, senha } = req.body;
+        
+        console.log(usuario);
+        console.log(senha);
 
-        const livros = db.collection('livros');
-
-        await livros.insertOne({
-            titulo,
-            autor,
-            status: 'disponivel'
+        const admin = await db.collection(COLECOES.USUARIOS).findOne({
+            usuario,
+            senha
         });
 
-        res.send('Livro cadastrado com sucesso!');
+        if (admin) {
+
+            res.redirect('/dashboard');
+
+        } else {
+
+            return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Usuário ou senha inválidos'
+
+    )
+
+);
+
+        }
 
     } catch (erro) {
 
         console.log(erro);
 
-        res.send('Erro ao cadastrar livro');
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro no login'
+
+    )
+
+);
 
     }
 
 });
 
+// ========================================
+// ROTAS DE LIVROS
+// ========================================
 app.get('/livros', async (req, res) => {
 
     try {
@@ -200,29 +286,168 @@ app.get('/livros', async (req, res) => {
 
         console.log(erro);
 
-        res.send('Erro ao buscar livros');
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro ao buscar livros'
+
+    )
+
+);
 
     }
 
 });
 
-app.post('/deletar-livro/:id', async (req, res) => {
+app.get('/livros-disponiveis', async (req, res) => {
 
     try {
 
-        const id = req.params.id;
+        const livros = await db.collection(COLECOES.LIVROS).find({
 
-        await db.collection('livros').deleteOne({
-            _id: new ObjectId(id)
+            status: STATUS.DISPONIVEL
+
+        }).toArray();
+
+        let conteudo = `
+
+            <h1>Livros Disponíveis</h1>
+
+        `;
+
+        livros.forEach(livro => {
+
+            conteudo += `
+
+                <div class="livro">
+
+                    <strong>Título:</strong>
+                    ${livro.titulo}
+
+                    <br>
+
+                    <strong>Autor:</strong>
+                    ${livro.autor}
+
+                    <br>
+
+                    <strong>Status:</strong>
+                    ${livro.status}
+
+                </div>
+
+            `;
+
         });
 
-        res.redirect('/livros');
+        res.send(
+            pagina('Livros Disponíveis', conteudo)
+        );
 
     } catch (erro) {
 
         console.log(erro);
 
-        res.send('Erro ao deletar livro');
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro ao buscar livros disponíveis'
+
+    )
+
+);
+
+    }
+
+});
+
+app.get('/cadastrar-livro', (req, res) => {
+
+    let conteudo = `
+
+        <h1>Cadastrar Livro</h1>
+
+        <form action="/cadastrar-livro" method="POST">
+
+            <label>Título:</label>
+
+            <input 
+                type="text"
+                name="titulo"
+                required
+            >
+
+            <label>Autor:</label>
+
+            <input 
+                type="text"
+                name="autor"
+                required
+            >
+
+            <button type="submit">
+
+                Cadastrar
+
+            </button>
+
+        </form>
+ 
+    `;
+
+    res.send(
+        pagina('Cadastrar Livro', conteudo)
+    );
+
+});
+
+app.post('/cadastrar-livro', async (req, res) => {
+
+    try {
+
+        const { titulo, autor } = req.body;
+
+        const livros = db.collection(COLECOES.LIVROS);
+
+        await livros.insertOne({
+            titulo,
+            autor,
+            status: STATUS.DISPONIVEL
+        });
+
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Livro cadastrado com sucesso'
+
+    )
+
+);
+
+    } catch (erro) {
+
+        console.log(erro);
+
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro ao cadastrar livro'
+
+    )
+
+);
 
     }
 
@@ -234,7 +459,7 @@ app.get('/editar-livro/:id', async (req, res) => {
 
         const id = req.params.id;
 
-        const livro = await db.collection('livros').findOne({
+        const livro = await db.collection(COLECOES.LIVROS).findOne({
 
             _id: new ObjectId(id)
 
@@ -282,7 +507,17 @@ app.get('/editar-livro/:id', async (req, res) => {
 
         console.log(erro);
 
-        res.send('Erro ao abrir edição');
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro ao abrir edição'
+
+    )
+
+);
 
     }
 
@@ -296,7 +531,7 @@ app.post('/editar-livro/:id', async (req, res) => {
 
         const { titulo, autor } = req.body;
 
-        await db.collection('livros').updateOne(
+        await db.collection(COLECOES.LIVROS).updateOne(
 
             { _id: new ObjectId(id) },
 
@@ -315,67 +550,358 @@ app.post('/editar-livro/:id', async (req, res) => {
 
         console.log(erro);
 
-        res.send('Erro ao editar livro');
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro ao editar livro'
+
+    )
+
+);
 
     }
 
 });
 
-app.post('/login', async (req, res) => {
+app.post('/deletar-livro/:id', async (req, res) => {
 
     try {
 
-        const { usuario, senha } = req.body;
-        
-        console.log(usuario);
-        console.log(senha);
+        const id = req.params.id;
 
-        const admin = await db.collection('usuarios').findOne({
-            usuario,
-            senha
+        await db.collection(COLECOES.LIVROS).deleteOne({
+            _id: new ObjectId(id)
         });
 
-        if (admin) {
-
-            res.redirect('/dashboard');
-
-        } else {
-
-            res.send('Usuário ou senha inválidos');
-
-        }
+        res.redirect('/livros');
 
     } catch (erro) {
 
         console.log(erro);
 
-        res.send('Erro no login');
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro ao deletar livro'
+
+    )
+
+);
 
     }
 
 });
 
+// ========================================
+// ROTAS DE EMPRÉSTIMOS
+// ========================================
+app.post('/emprestar-livro/:id', async (req, res) => {
+
+    try {
+
+        const id = req.params.id;
+
+        const livros = db.collection(COLECOES.LIVROS);
+
+        const emprestimos = db.collection(COLECOES.EMPRESTIMOS);
+
+        const livro = await livros.findOne({
+            _id: new ObjectId(id)
+        });
+
+        await livros.updateOne(
+
+            { _id: new ObjectId(id) },
+
+            {
+                $set: {
+                    status: STATUS.EMPRESTADO
+                }
+            }
+
+        );
+
+        const emprestimoExistente = await db.collection(COLECOES.EMPRESTIMOS).findOne({
+
+    titulo: livro.titulo,
+
+    status: STATUS.ATIVO
+
+});
+
+if (emprestimoExistente) {
+
+    return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Livro já está emprestado'
+
+    )
+
+);
+
+}
+
+        await emprestimos.insertOne({
+
+            livroId: livro._id,
+
+            titulo: livro.titulo,
+
+            usuario: 'admin',
+
+            dataEmprestimo: new Date(),
+
+            status: STATUS.ATIVO
+
+        });
+
+        res.redirect('/livros');
+
+    } catch (erro) {
+
+        console.log(erro);
+
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro ao emprestar livro'
+
+    )
+
+);
+
+    }
+
+});
+
+app.get('/emprestimos-ativos', async (req, res) => {
+
+    try {
+
+        const emprestimos = await db.collection(COLECOES.EMPRESTIMOS).find({
+
+            status: STATUS.ATIVO
+
+        }).toArray();
+
+        let conteudo = `
+
+            <h1>Empréstimos Ativos</h1>
+
+        `;
+
+        emprestimos.forEach(emprestimo => {
+
+            conteudo += `
+
+                <div class="livro">
+
+                    <strong>Livro:</strong>
+                    ${emprestimo.titulo}
+
+                    <br>
+
+                    <strong>Usuário:</strong>
+                    ${emprestimo.usuario}
+
+                    <br>
+
+                    <strong>Status:</strong>
+                    ${emprestimo.status}
+
+                    <br>
+
+                    <strong>Data:</strong>
+
+                    <br><br>
+
+                    <form action="/devolver-livro/${emprestimo._id}" method="POST">
+
+                        <button type="submit">
+
+                        Devolver Livro
+
+                        </button>
+
+                    </form>
+
+                    ${new Date(
+                        emprestimo.dataEmprestimo
+                    ).toLocaleDateString()}
+
+                </div>
+
+            `;
+
+        });
+
+        res.send(
+            pagina('Empréstimos Ativos', conteudo)
+        );
+
+    } catch (erro) {
+
+        console.log(erro);
+
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro ao buscar empréstimos'
+
+    )
+
+);
+
+    }
+
+});
+
+app.post('/devolver-livro/:id', async (req, res) => {
+
+    try {
+
+        const id = req.params.id;
+
+        const emprestimo = await db.collection(COLECOES.EMPRESTIMOS).findOne({
+
+            _id: new ObjectId(id)
+
+        });
+
+        if (emprestimo.status === 'devolvido') {
+
+            return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Livro já devolvido'
+
+    )
+
+);
+
+        }
+
+        if (!emprestimo) {
+
+            return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Empréstimo não encontrado'
+
+    )
+
+);
+
+        }
+
+        await db.collection(COLECOES.EMPRESTIMOS).updateOne(
+
+            {
+
+                _id: new ObjectId(id)
+
+            },
+
+            {
+
+                $set: {
+
+                    status: STATUS.DEVOLVIDO
+
+                }
+
+            }
+
+        );
+
+        await db.collection(COLECOES.LIVROS).updateOne(
+
+            {
+
+                titulo: emprestimo.titulo
+
+            },
+
+            {
+
+                $set: {
+
+                    status: STATUS.DISPONIVEL
+
+                }
+
+            }
+
+        );
+
+        res.redirect('/emprestimos-ativos');
+
+    } catch (erro) {
+
+        console.log(erro);
+
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro ao devolver livro'
+
+    )
+
+);
+
+    }
+
+});
+
+// ========================================
+// RELATÓRIOS E CONSULTAS
+// ========================================
 app.get('/dashboard', async (req, res) => {
 
     try {
 
-        const totalLivros = await db.collection('livros').countDocuments();
+        const totalLivros = await db.collection(COLECOES.LIVROS).countDocuments();
 
-        const livrosDisponiveis = await db.collection('livros').countDocuments({
+        const livrosDisponiveis = await db.collection(COLECOES.LIVROS).countDocuments({
 
-            status: 'disponivel'
-
-        });
-
-        const livrosEmprestados = await db.collection('livros').countDocuments({
-
-            status: 'emprestado'
+            status: STATUS.DISPONIVEL
 
         });
 
-        const emprestimosAtivos = await db.collection('emprestimos').countDocuments({
+        const livrosEmprestados = await db.collection(COLECOES.LIVROS).countDocuments({
 
-            status: 'ativo'
+            status: STATUS.EMPRESTADO
+
+        });
+
+        const emprestimosAtivos = await db.collection(COLECOES.EMPRESTIMOS).countDocuments({
+
+            status: STATUS.ATIVO
 
         });
 
@@ -421,160 +947,68 @@ app.get('/dashboard', async (req, res) => {
 
         console.log(erro);
 
-        res.send('Erro no dashboard');
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro no dashboard'
+
+    )
+
+);
 
     }
 
 });
 
-app.post('/emprestar-livro/:id', async (req, res) => {
+app.get('/relatorio-emprestimos', async (req, res) => {
 
     try {
 
-        const id = req.params.id;
-
-        const livros = db.collection('livros');
-
-        const emprestimos = db.collection('emprestimos');
-
-        const livro = await livros.findOne({
-            _id: new ObjectId(id)
-        });
-
-        await livros.updateOne(
-
-            { _id: new ObjectId(id) },
+        const relatorio = await db.collection(COLECOES.EMPRESTIMOS).aggregate([
 
             {
-                $set: {
-                    status: 'emprestado'
+                $group: {
+
+                    _id: '$titulo',
+
+                    totalEmprestimos: {
+                        $sum: 1
+                    }
+
+                }
+
+            },
+
+            {
+                $sort: {
+                    totalEmprestimos: -1
                 }
             }
 
-        );
-
-        await emprestimos.insertOne({
-
-            livroId: livro._id,
-
-            titulo: livro.titulo,
-
-            usuario: 'admin',
-
-            dataEmprestimo: new Date(),
-
-            status: 'ativo'
-
-        });
-
-        res.redirect('/livros');
-
-    } catch (erro) {
-
-        console.log(erro);
-
-        res.send('Erro ao emprestar livro');
-
-    }
-
-});
-
-app.get('/livros-disponiveis', async (req, res) => {
-
-    try {
-
-        const livros = await db.collection('livros').find({
-
-            status: 'disponivel'
-
-        }).toArray();
+        ]).toArray();
 
         let conteudo = `
 
-            <h1>Livros Disponíveis</h1>
+            <h1>Relatório de Empréstimos</h1>
 
         `;
 
-        livros.forEach(livro => {
-
-            conteudo += `
-
-                <div class="livro">
-
-                    <strong>Título:</strong>
-                    ${livro.titulo}
-
-                    <br>
-
-                    <strong>Autor:</strong>
-                    ${livro.autor}
-
-                    <br>
-
-                    <strong>Status:</strong>
-                    ${livro.status}
-
-                </div>
-
-            `;
-
-        });
-
-        res.send(
-            pagina('Livros Disponíveis', conteudo)
-        );
-
-    } catch (erro) {
-
-        console.log(erro);
-
-        res.send('Erro ao buscar livros disponíveis');
-
-    }
-
-});
-
-app.get('/emprestimos-ativos', async (req, res) => {
-
-    try {
-
-        const emprestimos = await db.collection('emprestimos').find({
-
-            status: 'ativo'
-
-        }).toArray();
-
-        let conteudo = `
-
-            <h1>Empréstimos Ativos</h1>
-
-        `;
-
-        emprestimos.forEach(emprestimo => {
+        relatorio.forEach(item => {
 
             conteudo += `
 
                 <div class="livro">
 
                     <strong>Livro:</strong>
-                    ${emprestimo.titulo}
+                    ${item._id}
 
                     <br>
 
-                    <strong>Usuário:</strong>
-                    ${emprestimo.usuario}
-
-                    <br>
-
-                    <strong>Status:</strong>
-                    ${emprestimo.status}
-
-                    <br>
-
-                    <strong>Data:</strong>
-                    ${new Date(
-                        emprestimo.dataEmprestimo
-                    ).toLocaleDateString()}
+                    <strong>Total de Empréstimos:</strong>
+                    ${item.totalEmprestimos}
 
                 </div>
 
@@ -583,14 +1017,24 @@ app.get('/emprestimos-ativos', async (req, res) => {
         });
 
         res.send(
-            pagina('Empréstimos Ativos', conteudo)
+            pagina('Relatório', conteudo)
         );
 
     } catch (erro) {
 
         console.log(erro);
 
-        res.send('Erro ao buscar empréstimos');
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro no relatório'
+
+    )
+
+);
 
     }
 
@@ -606,7 +1050,7 @@ app.get('/buscar-livro', async (req, res) => {
 
         if (termo !== '') {
 
-            livros = await db.collection('livros').find({
+            livros = await db.collection(COLECOES.LIVROS).find({
 
                 titulo: {
                     $regex: termo,
@@ -670,78 +1114,25 @@ app.get('/buscar-livro', async (req, res) => {
 
         console.log(erro);
 
-        res.send('Erro na busca');
+        return res.send(
+
+    mensagem(
+
+        'Aviso',
+
+        'Erro na busca'
+
+    )
+
+);
 
     }
 
 });
 
-app.get('/relatorio-emprestimos', async (req, res) => {
-
-    try {
-
-        const relatorio = await db.collection('emprestimos').aggregate([
-
-            {
-                $group: {
-
-                    _id: '$titulo',
-
-                    totalEmprestimos: {
-                        $sum: 1
-                    }
-
-                }
-
-            },
-
-            {
-                $sort: {
-                    totalEmprestimos: -1
-                }
-            }
-
-        ]).toArray();
-
-        let conteudo = `
-
-            <h1>Relatório de Empréstimos</h1>
-
-        `;
-
-        relatorio.forEach(item => {
-
-            conteudo += `
-
-                <div class="livro">
-
-                    <strong>Livro:</strong>
-                    ${item._id}
-
-                    <br>
-
-                    <strong>Total de Empréstimos:</strong>
-                    ${item.totalEmprestimos}
-
-                </div>
-
-            `;
-
-        });
-
-        res.send(
-            pagina('Relatório', conteudo)
-        );
-
-    } catch (erro) {
-
-        console.log(erro);
-
-        res.send('Erro no relatório');
-
-    }
-
-});
+// ========================================
+// INICIALIZAÇÃO DO SERVIDOR
+// ========================================
 app.listen(3000, () => {
     console.log('Servidor rodando em http://localhost:3000');
 })
