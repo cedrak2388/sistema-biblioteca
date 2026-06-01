@@ -73,3 +73,31 @@ button:hover {
     border-radius: 8px;
     background-color: #f9f9f9;
 }
+
+.cabecalho-livro {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 10px;
+
+}
+
+.acoes-livro {
+
+    display: flex;
+
+    gap: 8px;
+
+    align-items: center;
+
+}
+
+.acoes-livro form {
+
+    margin: 0;
+
+}

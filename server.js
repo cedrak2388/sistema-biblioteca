@@ -227,54 +227,78 @@ app.get('/livros', async (req, res) => {
 
             conteudo += `
 
-                <div class="livro">
+    <div class="livro">
 
-                    <strong>Título:</strong>
-                    ${livro.titulo}
+        <div class="cabecalho-livro">
 
-                    <br>
+            <div>
 
-                    <strong>Autor:</strong>
-                    ${livro.autor}
+                <strong>Título:</strong>
+                ${livro.titulo}
 
-                    <br>
+            </div>
 
-                    <strong>Status:</strong>
-                    ${livro.status}
+            <div class="acoes-livro">
 
-                    <br><br>
+                <a href="/editar-livro/${livro._id}">
 
-                    <a href="/editar-livro/${livro._id}">
+                    <button type="button">
 
-                        <button>
-                            Editar
-                        </button>
+                        Editar
 
-                    </a>
+                    </button>
 
-                    <br><br>
+                </a>
 
-                    <form action="/emprestar-livro/${livro._id}" method="POST">
+                ${livro.status === STATUS.DISPONIVEL ? `
 
-                        <button type="submit">
-                            Emprestar
-                        </button>
+                <form action="/emprestar-livro/${livro._id}" method="POST">
 
-                    </form>
+                    <button type="submit">
 
-                    <br>
+                        Emprestar
 
-                    <form action="/deletar-livro/${livro._id}" method="POST">
+                    </button>
 
-                        <button type="submit">
-                            Excluir
-                        </button>
+                </form>
 
-                    </form>
+                ` : `
 
-                </div>
+                <span>
 
-            `;
+                    Já emprestado
+
+                </span>
+
+                `}
+
+                <form action="/deletar-livro/${livro._id}" method="POST">
+
+                    <button type="submit">
+
+                        Excluir
+
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+        <br>
+
+        <strong>Autor:</strong>
+        ${livro.autor}
+
+        <br>
+
+        <strong>Status:</strong>
+        ${livro.status}
+
+    </div>
+
+`;
 
         });
 
