@@ -83,6 +83,10 @@ function menu() {
             Relatórios
         </a>
 
+        <a href="/">
+            Sair
+        </a>
+
     </nav>
 
     `;
@@ -123,7 +127,7 @@ function pagina(titulo, conteudo) {
 
 }
 
-function mensagem(titulo, texto) {
+function mensagem(titulo, texto, destino = '/dashboard') {
 
     return pagina(
 
@@ -137,9 +141,9 @@ function mensagem(titulo, texto) {
 
         <br>
 
-        <a href="/dashboard">
+        <a href="${destino}">
 
-            Voltar ao Dashboard
+            Voltar
 
         </a>
 
@@ -160,9 +164,6 @@ app.post('/login', async (req, res) => {
 
         const { usuario, senha } = req.body;
         
-        console.log(usuario);
-        console.log(senha);
-
         const admin = await db.collection(COLECOES.USUARIOS).findOne({
             usuario,
             senha
@@ -180,7 +181,9 @@ app.post('/login', async (req, res) => {
 
         'Aviso',
 
-        'Usuário ou senha inválidos'
+        'Usuário ou senha inválidos',
+
+        '/login.html'
 
     )
 
@@ -198,13 +201,21 @@ app.post('/login', async (req, res) => {
 
         'Aviso',
 
-        'Erro no login'
+        'Erro no login',
+
+        '/login.html'
 
     )
 
 );
 
     }
+
+});
+
+app.get('/', (req, res) => {
+
+    res.redirect('/login.html');
 
 });
 
@@ -215,7 +226,7 @@ app.get('/livros', async (req, res) => {
 
     try {
 
-        const livros = await db.collection('livros').find().toArray();
+        const livros = await db.collection(COLECOES.LIVROS).find().toArray();
 
         let conteudo = `
 
@@ -294,7 +305,13 @@ app.get('/livros', async (req, res) => {
         <br>
 
         <strong>Status:</strong>
-        ${livro.status}
+        ${livro.status === STATUS.DISPONIVEL
+
+            ? '✅ Disponível'
+
+            : '📕 Emprestado'
+
+}
 
     </div>
 
@@ -639,18 +656,6 @@ app.post('/emprestar-livro/:id', async (req, res) => {
             _id: new ObjectId(id)
         });
 
-        await livros.updateOne(
-
-            { _id: new ObjectId(id) },
-
-            {
-                $set: {
-                    status: STATUS.EMPRESTADO
-                }
-            }
-
-        );
-
         const emprestimoExistente = await db.collection(COLECOES.EMPRESTIMOS).findOne({
 
     titulo: livro.titulo,
@@ -667,13 +672,27 @@ if (emprestimoExistente) {
 
         'Aviso',
 
-        'Livro já está emprestado'
+        'Livro já está emprestado',
+
+        '/livros'
 
     )
 
 );
 
 }
+
+        await livros.updateOne(
+
+            { _id: new ObjectId(id) },
+
+            {
+                $set: {
+                    status: STATUS.EMPRESTADO
+                }
+            }
+
+        );
 
         await emprestimos.insertOne({
 
